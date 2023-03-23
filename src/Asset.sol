@@ -9,7 +9,7 @@ contract Asset{
 uint id;
 AggregatorV3Interface internal priceFeed;
 struct Seller{
-uint ItemName;
+string ItemName;
 uint ItemID;
 address ItemContract;
 uint ItemPrice;
@@ -23,22 +23,23 @@ mapping(uint => bool) idStatus;
 
 
 
-event ItemListed(uint ItemName, uint ItemPrice);
+event ItemListed(string ItemName, uint ItemPrice);
 
-event ItemPurchased(uint ItemName, uint ItemPrice, address ItemContract);
+event ItemPurchased(string ItemName, uint ItemPrice, address ItemContract);
 
-function listItemForSale(uint _itemName, uint _itemID, address _itemContract, uint _itemPrice ) external{
+function listItemForSale(string memory _itemName, uint _itemID, address _itemContract, uint _itemPrice ) external{
 _itemListed(_itemName, _itemID, _itemContract, _itemPrice);
 emit ItemListed(_itemName, _itemPrice);
 }
 
-function _itemListed( uint _itemName, uint _itemID, address _itemContract, uint _itemPrice) internal{
+function _itemListed( string memory _itemName, uint _itemID, address _itemContract, uint _itemPrice) internal{
 require(_itemContract != address(this), "You cant input this marketPlace contract Address");
 require (IERC721(_itemContract).balanceOf(msg.sender) >=1 , "Your balance can not be zero ");
-IERC721(_itemContract).approve(address(this), _itemID);
-IERC721(_itemContract).safeTransferFrom(msg.sender, address(this), _itemID);
+// IERC721(_itemContract).approve(address(this), _itemID);
 
+// IERC721(_itemContract).transferFrom(msg.sender, address(this), _itemID);
 
+IERC721(_itemContract).transferFrom(msg.sender, address(this), _itemID);
 id ++;
 Seller storage sId =  sellerId[id];
 
@@ -58,10 +59,10 @@ _buyItemListed(_id, tokenAmount);
 }
 function _buyItemListed(uint _id, uint tokenAmount) internal{
 
-address TokenCa = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+address TokenCa = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
      priceFeed = AggregatorV3Interface(
-            0x694AA1769357215DE4FAC081bf1f309aDC325306
+            0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46
         );
         (
             /* uint80 roundID */,
@@ -70,15 +71,16 @@ address TokenCa = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
             /*uint timeStamp*/,
             /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
+    // uint price = 3;
        
 require(idStatus[_id], "No item listed on this Id");
 
         Seller storage sId =  sellerId[_id];
         uint priceItem = uint(price) * sId.ItemID;
-        require(tokenAmount == priceItem, "Insufficient value entered");
-        require(IERC20(TokenCa).balanceOf(msg.sender)>= priceItem, "Insuficient balance");
+        require(tokenAmount >= priceItem, "Insufficient value entered");
+        require(IERC20(TokenCa).balanceOf(msg.sender) >= priceItem, "Insuficient balance");
         IERC20(TokenCa).approve(address(this), tokenAmount);
-        IERC20(TokenCa).transfer(sId.ItemOwner, tokenAmount);
+        IERC20(TokenCa).transferFrom(msg.sender, sId.ItemOwner, tokenAmount);
         IERC721(sId.ItemContract).transferFrom(address(this), msg.sender, sId.ItemID);
 
         emit ItemPurchased(sId.ItemName, tokenAmount, sId.ItemContract );
